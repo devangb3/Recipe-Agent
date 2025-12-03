@@ -4,8 +4,10 @@ from typing import Any, Callable, Dict, List
 from recipe_agent.db import search_recipes_mongo
 from recipe_agent.usda import fetch_nutrition_for_ingredient
 from recipe_agent.utils import as_number, short_round
-
+from recipe_agent.logging_utils import get_logger
 ToolHandler = Callable[[Dict[str, Any]], Any]
+
+logger = get_logger(__name__)
 
 @dataclass
 class Tool:
@@ -105,12 +107,14 @@ def build_tools() -> Dict[str, Tool]:
     }
 
 def _tool_search_local_recipes(args: Dict[str, Any]) -> List[Dict[str, Any]]:
+    logger.info("Searching local recipes")
     query = args.get("query") or ""
     cuisine = args.get("cuisine")
     diet = args.get("diet")
     return search_recipes_mongo(query, cuisine, diet)
 
 def _tool_calculate_recipe_nutrition(args: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Calculating recipe nutrition")
     ingredients = args.get("ingredients") or []
     servings = args.get("servings") or 1
     
@@ -139,6 +143,7 @@ def _tool_calculate_recipe_nutrition(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def _tool_scale_recipe(args: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Scaling recipe")
     base_servings = args.get("base_servings") or 2
     target_servings = args.get("target_servings") or base_servings
     ingredients = args.get("ingredients") or []

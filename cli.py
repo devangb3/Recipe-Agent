@@ -3,8 +3,9 @@ from typing import Optional
 
 from recipe_agent.agent import RecipeAgent
 from recipe_agent.client import OpenRouterClient
-from recipe_agent.config import DEFAULT_MODEL
+from recipe_agent.config import DEFAULT_MODEL, SYSTEM_MESSAGES
 from recipe_agent.utils import load_api_key
+from recipe_agent.logging_utils import setup_logging
 
 
 def run_agent(
@@ -16,7 +17,8 @@ def run_agent(
 
     client = OpenRouterClient(api_key=api_key, model=DEFAULT_MODEL)
     agent = RecipeAgent(client)
-    result = agent.run(prompt)
+    system_prompt = SYSTEM_MESSAGES[0]["content"]
+    result = agent.run(prompt, system_prompt)
 
     reply = result["reply"]
     trace = result["trace"]
@@ -29,6 +31,7 @@ def run_agent(
 
 
 def main() -> None:
+    setup_logging()
     api_key = load_api_key()
     prompt = "Give recipe for a coffee cake and the nutrtional breakdown for 200 grams of the cake"
     if len(sys.argv) > 1:

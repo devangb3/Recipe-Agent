@@ -1,9 +1,10 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from recipe_agent.client import OpenRouterClient
-from recipe_agent.config import DEFAULT_MODEL, SYSTEM_MESSAGES
+from recipe_agent.config import DEFAULT_MODEL
 from recipe_agent.tools import build_tools
+from recipe_agent.logging_utils import get_logger
 
 
 class RecipeAgent:
@@ -14,7 +15,7 @@ class RecipeAgent:
         self.client = client
         self.model = DEFAULT_MODEL
         self.tools = build_tools()
-        self.system_messages = SYSTEM_MESSAGES
+        self.logger = get_logger(__name__)
 
     def _tool_defs(self) -> List[Dict[str, Any]]:
         return [tool.as_openai_tool() for tool in self.tools.values()]
@@ -22,26 +23,26 @@ class RecipeAgent:
     def run(
         self,
         user_prompt: str,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
-        # Reset messages for single turn statelessness
-        messages: List[Dict[str, Any]] = list(self.system_messages)
+        messages: List[Dict[str, Any]] = []
+
+        sys_prompt = system_prompt or ""
+        messages.append({"role": "system", "content": sys_prompt})
         messages.append({"role": "user", "content": user_prompt})
 
         tool_defs = self._tool_defs()
         trace: List[str] = []
 
-        message = self.client.chat(messages, tools=tool_defs, tool_choice="auto")
+        message = self.client.chat(messages, tools=tool_defs)
         messages.append(message)
 
-        # Tool execution loop (ReAct)
-        # Limit iterations to avoid infinite loops
         max_iterations = 5
         iterations = 0
 
         while message.get("tool_calls") and iterations < max_iterations:
             iterations += 1
             
-            # Process all tool calls in parallel
             for call in message["tool_calls"]:
                 tool_name = call["function"]["name"]
                 raw_args = call["function"].get("arguments") or "{}"
@@ -73,8 +74,7 @@ class RecipeAgent:
                     }
                 )
 
-            # Call LLM again with tool outputs
-            message = self.client.chat(messages, tools=tool_defs, tool_choice="auto")
+            message = self.client.chat(messages, tools=tool_defs)
             messages.append(message)
 
         final_content = message.get("content") or "[No content returned]"

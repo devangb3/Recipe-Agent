@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
 
-from recipe_agent.db import search_recipes_mongo, seed_db_if_empty
+from recipe_agent.db import search_recipes_mongo
 from recipe_agent.usda import fetch_nutrition_for_ingredient
-from recipe_agent.utils import as_number, normalize_ingredient_name, short_round
+from recipe_agent.utils import as_number, short_round
 
 ToolHandler = Callable[[Dict[str, Any]], Any]
 
@@ -25,8 +25,6 @@ class Tool:
         }
 
 def build_tools() -> Dict[str, Tool]:
-    # Ensure DB is ready when tools are built
-    seed_db_if_empty()
     
     return {
         "search_local_recipes": Tool(
@@ -37,7 +35,7 @@ def build_tools() -> Dict[str, Tool]:
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search keywords for recipe title or tags.",
+                        "description": "Search keywords for recipe title.",
                     },
                     "cuisine": {
                         "type": "string",
@@ -47,37 +45,11 @@ def build_tools() -> Dict[str, Tool]:
                         "type": "string",
                         "description": "Filter by diet (e.g. vegetarian, vegan).",
                     },
-                    "time_limit": {
-                        "type": "integer",
-                        "description": "Maximum cooking time in minutes.",
-                    },
                 },
             },
             handler=_tool_search_local_recipes,
         ),
-        "get_usda_nutrition": Tool(
-            name="get_usda_nutrition",
-            description="Get accurate nutrition data for a specific ingredient from USDA.",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "ingredient": {
-                        "type": "string",
-                        "description": "Name of the ingredient.",
-                    },
-                    "quantity": {
-                        "type": "number",
-                        "description": "Quantity amount.",
-                    },
-                    "unit": {
-                        "type": "string",
-                        "description": "Unit (e.g. cup, tbsp, gram, oz).",
-                    },
-                },
-                "required": ["ingredient", "quantity", "unit"],
-            },
-            handler=_tool_get_usda_nutrition,
-        ),
+        
         "calculate_recipe_nutrition": Tool(
             name="calculate_recipe_nutrition",
             description="Calculate total nutrition for a recipe using USDA data.",
@@ -136,14 +108,7 @@ def _tool_search_local_recipes(args: Dict[str, Any]) -> List[Dict[str, Any]]:
     query = args.get("query") or ""
     cuisine = args.get("cuisine")
     diet = args.get("diet")
-    time_limit = args.get("time_limit")
-    return search_recipes_mongo(query, cuisine, diet, time_limit)
-
-def _tool_get_usda_nutrition(args: Dict[str, Any]) -> Dict[str, Any]:
-    ingredient = args.get("ingredient", "")
-    quantity = as_number(args.get("quantity")) or 0.0
-    unit = args.get("unit", "")
-    return fetch_nutrition_for_ingredient(ingredient, quantity, unit)
+    return search_recipes_mongo(query, cuisine, diet)
 
 def _tool_calculate_recipe_nutrition(args: Dict[str, Any]) -> Dict[str, Any]:
     ingredients = args.get("ingredients") or []

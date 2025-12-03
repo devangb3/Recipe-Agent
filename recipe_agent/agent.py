@@ -1,9 +1,9 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from recipe_agent.client import OpenRouterClient
 from recipe_agent.config import DEFAULT_MODEL, SYSTEM_MESSAGES
-from recipe_agent.tools import Tool, build_tools
+from recipe_agent.tools import build_tools
 
 
 class RecipeAgent:
@@ -30,7 +30,6 @@ class RecipeAgent:
         tool_defs = self._tool_defs()
         trace: List[str] = []
 
-        # Initial call
         message = self.client.chat(messages, tools=tool_defs, tool_choice="auto")
         messages.append(message)
 
@@ -59,11 +58,8 @@ class RecipeAgent:
                 else:
                     try:
                         tool_result = handler.handler(parsed_args)
-                        # Ensure result is serializable
                         tool_content = json.dumps(tool_result, ensure_ascii=False)
-                        # Keep trace brief
-                        trace_preview = tool_content[:200] + "..." if len(tool_content) > 200 else tool_content
-                        trace.append(f"{tool_name} -> {trace_preview}")
+                        trace.append(f"{tool_name} -> {tool_content}")
                     except Exception as exc:
                         tool_content = f"Error executing {tool_name}: {exc}"
                         trace.append(tool_content)

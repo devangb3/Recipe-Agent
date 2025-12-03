@@ -30,19 +30,11 @@ def run_agent(
 
 def main() -> None:
     api_key = load_api_key()
-    prompt = "Chicken Sandwich recipe under 30 minutes"
+    prompt = "Give recipe for a coffee cake and the nutrtional breakdown for 200 grams of the cake"
     if len(sys.argv) > 1:
         prompt = " ".join(sys.argv[1:])
 
-    try:
-        output = run_agent(
-            prompt=prompt,
-            api_key=api_key,
-        )
-    except RuntimeError as err:
-        sys.exit(str(err))
-
-    print(output)
+    print(run_agent(prompt, api_key))
 
 if __name__ == "__main__":
     main()

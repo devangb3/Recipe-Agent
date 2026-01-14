@@ -1,5 +1,5 @@
 BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL = "openai/gpt-4o-mini"
+DEFAULT_MODEL = "openai/gpt-4.1"
 TIMEOUT_SECONDS = 30
 
 SYSTEM_MESSAGES = [

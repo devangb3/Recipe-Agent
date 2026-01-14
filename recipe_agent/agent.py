@@ -40,6 +40,7 @@ class RecipeAgent:
         max_iterations = 5
         iterations = 0
 
+        #ReACT framework
         while message.get("tool_calls") and iterations < max_iterations:
             iterations += 1
             

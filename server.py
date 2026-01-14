@@ -1,4 +1,3 @@
-import os
 import uuid
 from typing import Any, Dict, Optional, Sequence
 
@@ -91,7 +90,7 @@ def health() -> Dict[str, str]:
 @app.post("/responses")
 def responses(payload: Dict[str, Any]) -> Dict[str, Any]:
 
-    logger.info("Received /responses request")
+    logger.info("Received request")
     model = payload.get("model") or DEFAULT_MODEL
     messages = payload.get("input") or []
     system_prompt, user_prompt = _extract_messages(messages)
@@ -104,6 +103,9 @@ def responses(payload: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as exc:
         logger.exception("Agent error")
         raise HTTPException(status_code=500, detail=f"Agent error: {exc}") from exc
+
+    if result.get("trace"):
+        logger.info("Trace: %s", result["trace"])
 
     reply = result.get("reply", "[no reply]")
     return _format_responses_reply(reply, model)

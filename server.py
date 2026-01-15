@@ -2,17 +2,19 @@ import uuid
 from typing import Any, Dict, Optional, Sequence
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from recipe_agent.agent import RecipeAgent
 from recipe_agent.client import OpenRouterClient
 from recipe_agent.config import DEFAULT_MODEL, SYSTEM_MESSAGES
 from recipe_agent.logging_utils import get_logger, setup_logging
+from recipe_agent.tools import build_tools
 from recipe_agent.utils import load_api_key
 
 setup_logging()
 logger = get_logger(__name__)
 app = FastAPI(title="Recipe Agent", version="0.1.0")
+TOOLS = build_tools()
 
 
 class ChatRequest(BaseModel):
@@ -26,6 +28,12 @@ class ChatResponse(BaseModel):
     reply: str
     trace: list[str]
     model: str
+
+
+class ToolExecutionRequest(BaseModel):
+    tool_call_id: Optional[str] = None
+    tool_name: str
+    arguments: Dict[str, Any] = Field(default_factory=dict)
 
 
 def _build_agent(model: Optional[str]) -> RecipeAgent:
@@ -85,6 +93,44 @@ def _format_responses_reply(reply: str, model: str) -> Dict[str, Any]:
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+@app.get("/tools/health")
+def tools_health() -> Dict[str, str]:
+    return {"status": "ok"}
+
+@app.get("/tools")
+def list_tools() -> Dict[str, Any]:
+    return {
+        "tools": [
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters,
+            }
+            for tool in TOOLS.values()
+        ]
+    }
+
+@app.post("/tools")
+def execute_tool(payload: ToolExecutionRequest) -> Dict[str, Any]:
+    tool = TOOLS.get(payload.tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Unknown tool: {payload.tool_name}")
+
+    try:
+        result = tool.handler(payload.arguments or {})
+    except Exception as exc:
+        logger.exception("Tool execution failed: %s", payload.tool_name)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Tool execution failed for {payload.tool_name}: {exc}",
+        ) from exc
+
+    return {
+        "tool_call_id": payload.tool_call_id,
+        "tool_name": payload.tool_name,
+        "result": result,
+    }
 
 
 @app.post("/responses")

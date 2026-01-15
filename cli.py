@@ -29,7 +29,6 @@ def run_agent(
         output_lines.extend(trace)
     return "\n".join(output_lines)
 
-
 def main() -> None:
     setup_logging()
     api_key = load_api_key()
